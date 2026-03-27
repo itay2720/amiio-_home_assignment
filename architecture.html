@@ -1,0 +1,994 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Real Estate AI Agent — Architecture</title>
+<style>
+  :root {
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --surface2: #21253a;
+    --border: #2d324a;
+    --accent: #4f8ef7;
+    --accent2: #7c5cfc;
+    --green: #3ecf8e;
+    --orange: #f59e0b;
+    --red: #ef4444;
+    --purple: #a855f7;
+    --teal: #14b8a6;
+    --text: #e2e8f0;
+    --muted: #8892a4;
+    --code-bg: #0d1117;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+  }
+
+  /* ── HEADER ── */
+  .hero {
+    background: linear-gradient(135deg, #0f1117 0%, #1a1d27 40%, #1e1b3a 100%);
+    border-bottom: 1px solid var(--border);
+    padding: 3rem 4rem 2.5rem;
+    position: relative;
+    overflow: hidden;
+  }
+  .hero::before {
+    content: '';
+    position: absolute;
+    top: -80px; right: -80px;
+    width: 400px; height: 400px;
+    background: radial-gradient(circle, rgba(79,142,247,.12) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .hero-badge {
+    display: inline-flex; align-items: center; gap: .5rem;
+    background: rgba(79,142,247,.1);
+    border: 1px solid rgba(79,142,247,.3);
+    border-radius: 99px;
+    padding: .25rem .85rem;
+    font-size: .75rem;
+    color: var(--accent);
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    margin-bottom: 1rem;
+  }
+  .hero h1 { font-size: 2.4rem; font-weight: 700; letter-spacing: -.02em; margin-bottom: .4rem; }
+  .hero h1 span { background: linear-gradient(90deg, var(--accent), var(--accent2)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  .hero p { color: var(--muted); font-size: 1.05rem; max-width: 620px; }
+  .hero-meta { display: flex; gap: 2rem; margin-top: 1.5rem; flex-wrap: wrap; }
+  .hero-meta .tag {
+    display: flex; align-items: center; gap: .4rem;
+    font-size: .85rem; color: var(--muted);
+  }
+  .hero-meta .tag b { color: var(--text); }
+  .dot { width: 8px; height: 8px; border-radius: 50%; }
+  .dot-blue { background: var(--accent); }
+  .dot-green { background: var(--green); }
+  .dot-purple { background: var(--purple); }
+  .dot-orange { background: var(--orange); }
+
+  /* ── LAYOUT ── */
+  .container { max-width: 1200px; margin: 0 auto; padding: 2.5rem 2rem; }
+  .section { margin-bottom: 3.5rem; }
+  .section-title {
+    font-size: 1.15rem; font-weight: 600;
+    color: var(--muted); letter-spacing: .08em; text-transform: uppercase;
+    margin-bottom: 1.2rem;
+    display: flex; align-items: center; gap: .6rem;
+  }
+  .section-title::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+  /* ── TECH STACK ── */
+  .stack-grid { display: flex; flex-wrap: wrap; gap: .75rem; }
+  .stack-pill {
+    display: flex; align-items: center; gap: .5rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: .45rem .9rem;
+    font-size: .88rem;
+    transition: border-color .2s;
+  }
+  .stack-pill:hover { border-color: var(--accent); }
+  .stack-pill .icon { font-size: 1.1rem; }
+
+  /* ── FLOW DIAGRAM ── */
+  .flow-container {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 2rem;
+    overflow-x: auto;
+  }
+  .flow-diagram {
+    min-width: 860px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0;
+  }
+  .flow-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0;
+    width: 100%;
+  }
+  .flow-node {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    border-radius: 12px;
+    border: 2px solid;
+    padding: .65rem 1rem;
+    min-width: 110px;
+    text-align: center;
+    font-size: .82rem;
+    font-weight: 600;
+    cursor: default;
+    transition: transform .15s, box-shadow .15s;
+  }
+  .flow-node:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,.4); }
+  .flow-node .node-icon { font-size: 1.4rem; margin-bottom: .2rem; }
+  .flow-node .node-label { line-height: 1.2; }
+  .flow-node .node-sub { font-size: .7rem; font-weight: 400; color: var(--muted); margin-top: .2rem; }
+
+  .node-supervisor { border-color: var(--accent); background: rgba(79,142,247,.08); color: var(--accent); }
+  .node-pl         { border-color: var(--green); background: rgba(62,207,142,.08); color: var(--green); }
+  .node-property   { border-color: var(--teal); background: rgba(20,184,166,.08); color: var(--teal); }
+  .node-compare    { border-color: var(--orange); background: rgba(245,158,11,.08); color: var(--orange); }
+  .node-general    { border-color: var(--purple); background: rgba(168,85,247,.08); color: var(--purple); }
+  .node-clarify    { border-color: var(--red); background: rgba(239,68,68,.08); color: var(--red); }
+  .node-formatter  { border-color: var(--accent2); background: rgba(124,92,252,.08); color: var(--accent2); }
+  .node-end        { border-color: var(--border); background: var(--surface2); color: var(--muted); }
+  .node-user       { border-color: #64748b; background: rgba(100,116,139,.08); color: #94a3b8; }
+  .node-data       { border-color: #f472b6; background: rgba(244,114,182,.08); color: #f472b6; font-size:.78rem; }
+
+  /* arrows */
+  .arrow-down { display: flex; justify-content: center; padding: .25rem 0; }
+  .arrow-down svg, .arrow-right svg, .arrow-diag svg { display: block; }
+
+  .flow-branches {
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    gap: 1.2rem;
+    width: 100%;
+    margin-top: 0;
+  }
+  .branch {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0;
+  }
+  .branch-line {
+    width: 1px;
+    background: var(--border);
+    flex: 1;
+  }
+
+  /* the top connector bar */
+  .branch-bar {
+    display: flex;
+    align-items: flex-start;
+    position: relative;
+    width: 100%;
+  }
+
+  /* ── COMPONENTS GRID ── */
+  .comp-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1rem;
+  }
+  .comp-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.2rem 1.4rem;
+    transition: border-color .2s, transform .15s;
+  }
+  .comp-card:hover { border-color: var(--accent); transform: translateY(-1px); }
+  .comp-card-header {
+    display: flex; align-items: center; gap: .7rem;
+    margin-bottom: .7rem;
+  }
+  .comp-card-icon { font-size: 1.5rem; }
+  .comp-card-title { font-weight: 600; font-size: .95rem; }
+  .comp-card-file { font-size: .72rem; color: var(--muted); font-family: monospace; }
+  .comp-card p { font-size: .85rem; color: var(--muted); line-height: 1.5; }
+  .comp-card ul { padding-left: 1.1rem; margin-top: .4rem; }
+  .comp-card li { font-size: .83rem; color: var(--muted); margin-bottom: .2rem; }
+  .comp-card li b { color: var(--text); }
+
+  /* ── STATE ── */
+  .state-box {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.5rem 1.8rem;
+    font-family: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
+    font-size: .84rem;
+    line-height: 1.8;
+    overflow-x: auto;
+  }
+  .kw { color: #ff79c6; }
+  .cls { color: #8be9fd; }
+  .str { color: #f1fa8c; }
+  .key { color: var(--accent); }
+  .cm  { color: #6272a4; }
+  .lit { color: var(--green); }
+
+  /* ── DATA FLOW ── */
+  .flow-steps {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    position: relative;
+  }
+  .flow-steps::before {
+    content: '';
+    position: absolute;
+    left: 20px; top: 24px; bottom: 24px;
+    width: 2px;
+    background: linear-gradient(to bottom, var(--accent), var(--accent2), var(--purple));
+  }
+  .flow-step {
+    display: flex;
+    align-items: flex-start;
+    gap: 1.2rem;
+    padding: .9rem 0;
+    padding-left: .2rem;
+  }
+  .step-num {
+    width: 40px; height: 40px;
+    border-radius: 50%;
+    background: var(--surface2);
+    border: 2px solid var(--accent);
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: .85rem;
+    color: var(--accent);
+    flex-shrink: 0;
+    position: relative; z-index: 1;
+  }
+  .step-body { flex: 1; padding-top: .35rem; }
+  .step-body h4 { font-size: .92rem; font-weight: 600; margin-bottom: .2rem; }
+  .step-body p  { font-size: .83rem; color: var(--muted); }
+  .step-body code {
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 4px; padding: .1rem .35rem;
+    font-size: .78rem; font-family: monospace; color: var(--accent);
+  }
+
+  /* ── CSV SCHEMA ── */
+  .schema-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: .85rem;
+  }
+  .schema-table th {
+    text-align: left;
+    padding: .6rem 1rem;
+    background: var(--surface2);
+    color: var(--muted);
+    font-size: .75rem;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    border-bottom: 1px solid var(--border);
+  }
+  .schema-table td {
+    padding: .55rem 1rem;
+    border-bottom: 1px solid rgba(45,50,74,.5);
+    color: var(--text);
+    font-family: monospace;
+    font-size: .82rem;
+  }
+  .schema-table tr:hover td { background: var(--surface2); }
+  .badge {
+    display: inline-block;
+    padding: .15rem .5rem;
+    border-radius: 4px;
+    font-size: .72rem;
+    font-weight: 600;
+    font-family: sans-serif;
+  }
+  .badge-filter { background: rgba(79,142,247,.15); color: var(--accent); }
+  .badge-agg    { background: rgba(62,207,142,.15); color: var(--green); }
+  .badge-time   { background: rgba(245,158,11,.15); color: var(--orange); }
+  .badge-key    { background: rgba(168,85,247,.15); color: var(--purple); }
+
+  /* ── DESIGN DECISIONS ── */
+  .decisions-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 1rem;
+  }
+  .decision-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.2rem 1.4rem;
+  }
+  .decision-card .dec-header { display: flex; align-items: center; gap: .5rem; margin-bottom: .6rem; }
+  .decision-card .dec-icon { font-size: 1.3rem; }
+  .decision-card h4 { font-size: .9rem; font-weight: 600; }
+  .decision-card p { font-size: .82rem; color: var(--muted); line-height: 1.5; }
+
+  /* ── EVAL ── */
+  .eval-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 1rem;
+  }
+  .eval-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1rem 1.2rem;
+    text-align: center;
+  }
+  .eval-card .metric { font-size: 1.8rem; font-weight: 700; }
+  .eval-card .label  { font-size: .78rem; color: var(--muted); margin-top: .2rem; }
+
+  /* ── FILE TREE ── */
+  .file-tree {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.4rem 1.8rem;
+    font-family: 'Courier New', monospace;
+    font-size: .84rem;
+    line-height: 2;
+  }
+  .ft-dir  { color: var(--accent); }
+  .ft-file { color: var(--text); }
+  .ft-note { color: var(--muted); }
+  .ft-new  { color: var(--green); }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width: 700px) {
+    .hero { padding: 2rem 1.5rem; }
+    .hero h1 { font-size: 1.7rem; }
+    .container { padding: 1.5rem 1rem; }
+  }
+
+  /* scroll reveal animation */
+  .reveal {
+    opacity: 0;
+    transform: translateY(18px);
+    transition: opacity .5s ease, transform .5s ease;
+  }
+  .reveal.visible { opacity: 1; transform: none; }
+
+  /* tooltip */
+  [data-tip] { position: relative; cursor: help; }
+  [data-tip]:hover::after {
+    content: attr(data-tip);
+    position: absolute;
+    bottom: calc(100% + 6px);
+    left: 50%; transform: translateX(-50%);
+    background: #111827;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: .35rem .7rem;
+    font-size: .75rem;
+    color: var(--text);
+    white-space: nowrap;
+    z-index: 100;
+    pointer-events: none;
+  }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════  HERO  ═══════════════════════════ -->
+<div class="hero">
+  <div class="hero-badge">
+    <span>🏢</span> Architecture Overview
+  </div>
+  <h1>Real Estate <span>AI Agent</span></h1>
+  <p>A multi-agent LangGraph system that answers natural-language questions about property P&amp;L, tenant details, and portfolio comparisons — powered by GPT-4o and a Pandas CSV back-end.</p>
+  <div class="hero-meta">
+    <div class="tag"><span class="dot dot-blue"></span> <b>LangGraph</b> multi-node graph</div>
+    <div class="tag"><span class="dot dot-green"></span> <b>GPT-4o</b> intent + formatting</div>
+    <div class="tag"><span class="dot dot-purple"></span> <b>Streamlit</b> chat UI</div>
+    <div class="tag"><span class="dot dot-orange"></span> <b>Pandas</b> CSV data layer</div>
+  </div>
+</div>
+
+<div class="container">
+
+  <!-- ═══════════  TECH STACK  ═══════════ -->
+  <div class="section reveal">
+    <div class="section-title">Tech Stack</div>
+    <div class="stack-grid">
+      <div class="stack-pill"><span class="icon">🐍</span> Python 3.11+</div>
+      <div class="stack-pill"><span class="icon">🔗</span> LangGraph ≥ 0.2</div>
+      <div class="stack-pill"><span class="icon">🤖</span> OpenAI GPT-4o</div>
+      <div class="stack-pill"><span class="icon">🐼</span> Pandas ≥ 2.0</div>
+      <div class="stack-pill"><span class="icon">🌐</span> Streamlit ≥ 1.35</div>
+      <div class="stack-pill"><span class="icon">🔍</span> RapidFuzz (fuzzy match)</div>
+      <div class="stack-pill"><span class="icon">📄</span> CSV data store</div>
+      <div class="stack-pill"><span class="icon">🧪</span> Custom eval harness</div>
+    </div>
+  </div>
+
+  <!-- ═══════════  FLOW DIAGRAM  ═══════════ -->
+  <div class="section reveal">
+    <div class="section-title">Graph Architecture</div>
+    <div class="flow-container">
+      <div class="flow-diagram">
+
+        <!-- USER -->
+        <div class="flow-row">
+          <div class="flow-node node-user" style="min-width:130px">
+            <div class="node-icon">👤</div>
+            <div class="node-label">User Question</div>
+            <div class="node-sub">natural language</div>
+          </div>
+        </div>
+        <div class="arrow-down">
+          <svg width="2" height="32"><line x1="1" y1="0" x2="1" y2="32" stroke="#4f8ef7" stroke-width="2" stroke-dasharray="4 3"/></svg>
+        </div>
+
+        <!-- SUPERVISOR -->
+        <div class="flow-row">
+          <div class="flow-node node-supervisor" data-tip="GPT-4o call: extracts intent + filters" style="min-width:160px">
+            <div class="node-icon">🧠</div>
+            <div class="node-label">Supervisor</div>
+            <div class="node-sub">intent detection + filter extraction</div>
+          </div>
+        </div>
+        <div class="arrow-down">
+          <svg width="2" height="20"><line x1="1" y1="0" x2="1" y2="20" stroke="#2d324a" stroke-width="2"/></svg>
+        </div>
+
+        <!-- ROUTE LABEL -->
+        <div style="background:rgba(45,50,74,.5);border:1px solid var(--border);border-radius:6px;padding:.2rem .9rem;font-size:.72rem;color:var(--muted);letter-spacing:.05em">
+          CONDITIONAL ROUTE  →  intent value
+        </div>
+        <div class="arrow-down">
+          <svg width="2" height="16"><line x1="1" y1="0" x2="1" y2="16" stroke="#2d324a" stroke-width="2"/></svg>
+        </div>
+
+        <!-- 5 BRANCHES -->
+        <div style="display:flex;align-items:flex-start;justify-content:center;gap:.6rem;width:100%;position:relative">
+
+          <!-- horizontal line connector -->
+          <svg style="position:absolute;top:0;left:50%;transform:translateX(-50%)" width="820" height="16">
+            <line x1="80" y1="8" x2="740" y2="8" stroke="#2d324a" stroke-width="1.5"/>
+            <line x1="80"  y1="0" x2="80"  y2="16" stroke="#2d324a" stroke-width="1.5"/>
+            <line x1="245" y1="0" x2="245" y2="16" stroke="#2d324a" stroke-width="1.5"/>
+            <line x1="410" y1="0" x2="410" y2="16" stroke="#2d324a" stroke-width="1.5"/>
+            <line x1="575" y1="0" x2="575" y2="16" stroke="#2d324a" stroke-width="1.5"/>
+            <line x1="740" y1="0" x2="740" y2="16" stroke="#2d324a" stroke-width="1.5"/>
+          </svg>
+
+          <!-- P&L branch -->
+          <div style="display:flex;flex-direction:column;align-items:center;flex:1">
+            <div style="height:16px"></div>
+            <div class="flow-node node-pl" data-tip="query_pl() → grouped profit rows">
+              <div class="node-icon">📊</div>
+              <div class="node-label">P&amp;L Node</div>
+              <div class="node-sub">intent: pl</div>
+            </div>
+          </div>
+
+          <!-- Property branch -->
+          <div style="display:flex;flex-direction:column;align-items:center;flex:1">
+            <div style="height:16px"></div>
+            <div class="flow-node node-property" data-tip="query_property() → raw CSV rows">
+              <div class="node-icon">🏠</div>
+              <div class="node-label">Property Node</div>
+              <div class="node-sub">intent: property</div>
+            </div>
+          </div>
+
+          <!-- Compare branch -->
+          <div style="display:flex;flex-direction:column;align-items:center;flex:1">
+            <div style="height:16px"></div>
+            <div class="flow-node node-compare" data-tip="llm_resolve → query_compare → {prop: profit}">
+              <div class="node-icon">⚖️</div>
+              <div class="node-label">Compare Node</div>
+              <div class="node-sub">intent: compare</div>
+            </div>
+          </div>
+
+          <!-- General branch -->
+          <div style="display:flex;flex-direction:column;align-items:center;flex:1">
+            <div style="height:16px"></div>
+            <div class="flow-node node-general" data-tip="GPT-4o answers without dataset">
+              <div class="node-icon">💬</div>
+              <div class="node-label">General Node</div>
+              <div class="node-sub">intent: general</div>
+            </div>
+          </div>
+
+          <!-- Clarify branch -->
+          <div style="display:flex;flex-direction:column;align-items:center;flex:1">
+            <div style="height:16px"></div>
+            <div class="flow-node node-clarify" data-tip="GPT-4o asks one clarifying question">
+              <div class="node-icon">❓</div>
+              <div class="node-label">Clarify Node</div>
+              <div class="node-sub">intent: clarify</div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- arrows from data nodes down -->
+        <div style="display:flex;align-items:flex-start;justify-content:center;gap:.6rem;width:100%;margin-top:.1rem">
+          <div style="flex:1;display:flex;flex-direction:column;align-items:center">
+            <svg width="2" height="28"><line x1="1" y1="0" x2="1" y2="28" stroke="#3ecf8e" stroke-width="2" stroke-dasharray="4 3"/></svg>
+          </div>
+          <div style="flex:1;display:flex;flex-direction:column;align-items:center">
+            <svg width="2" height="28"><line x1="1" y1="0" x2="1" y2="28" stroke="#14b8a6" stroke-width="2" stroke-dasharray="4 3"/></svg>
+          </div>
+          <div style="flex:1;display:flex;flex-direction:column;align-items:center">
+            <svg width="2" height="28"><line x1="1" y1="0" x2="1" y2="28" stroke="#f59e0b" stroke-width="2" stroke-dasharray="4 3"/></svg>
+          </div>
+          <div style="flex:1;display:flex;flex-direction:column;align-items:center">
+            <svg width="2" height="28"><line x1="1" y1="0" x2="1" y2="28" stroke="#a855f7" stroke-width="2" stroke-dasharray="4 3"/></svg>
+          </div>
+          <div style="flex:1;display:flex;flex-direction:column;align-items:center">
+            <svg width="2" height="28"><line x1="1" y1="0" x2="1" y2="28" stroke="#ef4444" stroke-width="2" stroke-dasharray="4 3"/></svg>
+          </div>
+        </div>
+
+        <!-- FORMATTER + END row -->
+        <div style="display:flex;align-items:flex-start;justify-content:center;gap:.6rem;width:100%">
+          <!-- formatter spanning 3 -->
+          <div style="flex:3;display:flex;flex-direction:column;align-items:center;gap:0">
+            <div class="flow-node node-formatter" style="width:100%;max-width:380px" data-tip="GPT-4o narrates data → clean answer">
+              <div class="node-icon">✍️</div>
+              <div class="node-label">Formatter Node</div>
+              <div class="node-sub">GPT-4o turns data into prose</div>
+            </div>
+          </div>
+          <!-- END spanning 2 -->
+          <div style="flex:2;display:flex;flex-direction:column;align-items:center;gap:0">
+            <div class="flow-node node-end" style="width:100%;max-width:240px">
+              <div class="node-icon">🏁</div>
+              <div class="node-label">END</div>
+              <div class="node-sub">answer in state</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="arrow-down">
+          <svg width="2" height="24"><line x1="1" y1="0" x2="1" y2="24" stroke="#7c5cfc" stroke-width="2" stroke-dasharray="4 3"/></svg>
+        </div>
+
+        <!-- FINAL END -->
+        <div class="flow-row">
+          <div class="flow-node node-end" style="min-width:160px">
+            <div class="node-icon">🏁</div>
+            <div class="node-label">END (formatter)</div>
+            <div class="node-sub">state.answer returned</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════  SHARED STATE  ═══════════ -->
+  <div class="section reveal">
+    <div class="section-title">Shared State — AgentState</div>
+    <p style="color:var(--muted);font-size:.88rem;margin-bottom:1rem">
+      Every node reads from and writes to a single <code style="background:var(--surface2);padding:.1rem .35rem;border-radius:4px;font-size:.8rem">AgentState</code> TypedDict.
+      LangGraph passes the state through the graph, so nodes communicate purely through these fields — no global variables, no side channels.
+    </p>
+    <div class="state-box">
+<span class="kw">from</span> typing <span class="kw">import</span> <span class="cls">TypedDict</span>, Any, Literal
+
+<span class="kw">class</span> <span class="cls">AgentState</span>(<span class="cls">TypedDict</span>):
+    <span class="key">question</span>: <span class="cls">str</span>           <span class="cm"># raw user input</span>
+    <span class="key">intent</span>:   Literal[<span class="str">"pl"</span>, <span class="str">"property"</span>, <span class="str">"compare"</span>, <span class="str">"general"</span>, <span class="str">"clarify"</span>]
+    <span class="key">filters</span>:  <span class="cls">dict</span>           <span class="cm"># {property_name, tenant_name, year, quarter, month, ledger_type}</span>
+    <span class="key">data</span>:     Any            <span class="cm"># list[dict] or {prop: profit} — filled by worker nodes</span>
+    <span class="key">answer</span>:   <span class="cls">str</span>           <span class="cm"># final natural-language response</span>
+    <span class="key">error</span>:    <span class="cls">str</span>           <span class="cm"># propagated to formatter if something fails</span>
+    </div>
+  </div>
+
+  <!-- ═══════════  COMPONENT DEEP DIVE  ═══════════ -->
+  <div class="section reveal">
+    <div class="section-title">Component Deep Dive</div>
+    <div class="comp-grid">
+
+      <div class="comp-card">
+        <div class="comp-card-header">
+          <span class="comp-card-icon">🧠</span>
+          <div>
+            <div class="comp-card-title">Supervisor Node</div>
+            <div class="comp-card-file">nodes/supervisor.py</div>
+          </div>
+        </div>
+        <p>The entry point. Makes one GPT-4o call with all canonical values from the CSV injected into the system prompt, returning a JSON with intent and filters.</p>
+        <ul>
+          <li>Injects <b>known properties, tenants, ledger types</b> into prompt</li>
+          <li>Forces <b>JSON mode</b> for reliable parsing</li>
+          <li>For <code>compare</code> intent: runs <b>llm_resolve</b> as fallback if property names don't match</li>
+        </ul>
+      </div>
+
+      <div class="comp-card">
+        <div class="comp-card-header">
+          <span class="comp-card-icon">📊</span>
+          <div>
+            <div class="comp-card-title">P&amp;L Node</div>
+            <div class="comp-card-file">nodes/pl.py</div>
+          </div>
+        </div>
+        <p>Handles profit &amp; loss queries. Calls <code>query_pl()</code> which groups by <code>property_name, month, ledger_type, ledger_group</code> and sums <code>profit</code>.</p>
+        <ul>
+          <li>Filters applied before groupby</li>
+          <li>Gracefully returns empty answer if no data</li>
+          <li>Passes rows to <b>formatter</b></li>
+        </ul>
+      </div>
+
+      <div class="comp-card">
+        <div class="comp-card-header">
+          <span class="comp-card-icon">🏠</span>
+          <div>
+            <div class="comp-card-title">Property Node</div>
+            <div class="comp-card-file">nodes/property.py</div>
+          </div>
+        </div>
+        <p>Returns raw filtered rows from the CSV — useful for tenant-level drill-down, month-by-month views, or specific ledger inspection.</p>
+        <ul>
+          <li>Calls <code>query_property()</code> — no aggregation</li>
+          <li>Returns <code>df.to_dict("records")</code></li>
+          <li>Streamlit shows top 20 rows in a table</li>
+        </ul>
+      </div>
+
+      <div class="comp-card">
+        <div class="comp-card-header">
+          <span class="comp-card-icon">⚖️</span>
+          <div>
+            <div class="comp-card-title">Compare Node</div>
+            <div class="comp-card-file">nodes/compare.py</div>
+          </div>
+        </div>
+        <p>Side-by-side property comparison. Requires at least 2 resolved property names, then sums profit per property.</p>
+        <ul>
+          <li>Validates against canonical list first</li>
+          <li><b>Double fallback</b>: llm_resolve on unmatched names, then on full question</li>
+          <li>Returns <code>{"Building 180": 95400, …}</code></li>
+        </ul>
+      </div>
+
+      <div class="comp-card">
+        <div class="comp-card-header">
+          <span class="comp-card-icon">💬</span>
+          <div>
+            <div class="comp-card-title">General Node</div>
+            <div class="comp-card-file">nodes/general.py</div>
+          </div>
+        </div>
+        <p>Handles real estate knowledge questions (cap rate, NOI, market trends, investment advice) that don't require querying the dataset.</p>
+        <ul>
+          <li>GPT-4o acts as a domain expert</li>
+          <li>Skips formatter — goes straight to END</li>
+          <li>Never references internal data</li>
+        </ul>
+      </div>
+
+      <div class="comp-card">
+        <div class="comp-card-header">
+          <span class="comp-card-icon">❓</span>
+          <div>
+            <div class="comp-card-title">Clarify Node</div>
+            <div class="comp-card-file">nodes/clarify.py</div>
+          </div>
+        </div>
+        <p>Handles truly ambiguous queries. GPT-4o asks exactly one targeted question to help the user refine their request.</p>
+        <ul>
+          <li>Suggests <b>known property names &amp; years</b> in the prompt</li>
+          <li>Never attempts to answer the question</li>
+          <li>Used sparingly — supervisor avoids it if intent is inferrable</li>
+        </ul>
+      </div>
+
+      <div class="comp-card">
+        <div class="comp-card-header">
+          <span class="comp-card-icon">✍️</span>
+          <div>
+            <div class="comp-card-title">Formatter Node</div>
+            <div class="comp-card-file">nodes/formatter.py</div>
+          </div>
+        </div>
+        <p>Turns raw data rows into a 2–6 sentence human-readable answer. Enforces consistent money formatting and concise style.</p>
+        <ul>
+          <li>Receives <code>question + data</code></li>
+          <li>Post-processes with regex to fix spacing artifacts</li>
+          <li>Shared by pl, property, and compare nodes</li>
+        </ul>
+      </div>
+
+      <div class="comp-card">
+        <div class="comp-card-header">
+          <span class="comp-card-icon">🔧</span>
+          <div>
+            <div class="comp-card-title">LLM Resolve Tool</div>
+            <div class="comp-card-file">tools/llm_resolve.py</div>
+          </div>
+        </div>
+        <p>Maps informal property references (nicknames, addresses, partial names) to canonical names from the CSV. Only returns names that exist verbatim in the known list.</p>
+        <ul>
+          <li>GPT-4o with JSON mode</li>
+          <li>Extra validation pass after parsing</li>
+          <li>Used by supervisor and compare node</li>
+        </ul>
+      </div>
+
+      <div class="comp-card">
+        <div class="comp-card-header">
+          <span class="comp-card-icon">📂</span>
+          <div>
+            <div class="comp-card-title">Data Tool</div>
+            <div class="comp-card-file">tools/data.py</div>
+          </div>
+        </div>
+        <p>CSV loaded once at module import into a global DataFrame. All queries filter this in-memory DataFrame — no database, no repeated I/O.</p>
+        <ul>
+          <li><b>get_unique_values(col)</b> — for prompt injection</li>
+          <li><b>query_pl(filters)</b> — grouped P&amp;L</li>
+          <li><b>query_property(filters)</b> — raw rows</li>
+          <li><b>query_compare(props, filters)</b> — profit per property</li>
+        </ul>
+      </div>
+
+      <div class="comp-card">
+        <div class="comp-card-header">
+          <span class="comp-card-icon">🌐</span>
+          <div>
+            <div class="comp-card-title">Streamlit App</div>
+            <div class="comp-card-file">app.py</div>
+          </div>
+        </div>
+        <p>Three-column layout: guided input on the left, chat window in the center, diagnostics panel on the right.</p>
+        <ul>
+          <li><b>Left:</b> dropdowns to build structured questions</li>
+          <li><b>Center:</b> scrollable chat with inline metrics tables</li>
+          <li><b>Right:</b> shows intent, filters, row count for each response</li>
+        </ul>
+      </div>
+
+      <div class="comp-card">
+        <div class="comp-card-header">
+          <span class="comp-card-icon">🧪</span>
+          <div>
+            <div class="comp-card-title">Eval Harness</div>
+            <div class="comp-card-file">eval.py</div>
+          </div>
+        </div>
+        <p>Root-level evaluation script that runs defined test cases through the compiled graph and reports accuracy metrics.</p>
+        <ul>
+          <li>Checks <b>intent accuracy</b></li>
+          <li>Checks <b>answer non-empty rate</b></li>
+          <li>Checks <b>numeric match rate</b> in answers</li>
+          <li>Structured failure report per case</li>
+        </ul>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ═══════════  DATA FLOW WALKTHROUGH  ═══════════ -->
+  <div class="section reveal">
+    <div class="section-title">Data Flow Walkthrough — Example: "Compare Building 180 vs Building 140 in 2025"</div>
+    <div class="flow-steps">
+      <div class="flow-step">
+        <div class="step-num">1</div>
+        <div class="step-body">
+          <h4>User submits question via Streamlit</h4>
+          <p>The form in <code>app.py</code> captures the text and calls <code>graph.invoke({"question": ..., ...})</code> with a fresh initial state.</p>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="step-num">2</div>
+        <div class="step-body">
+          <h4>Supervisor makes GPT-4o call</h4>
+          <p>The system prompt includes all canonical property names, tenants, years, and quarters pulled from the live CSV. GPT-4o returns <code>{"intent": "compare", "filters": {"properties": ["Building 180", "Building 140"], "year": "2025"}}</code>.</p>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="step-num">3</div>
+        <div class="step-body">
+          <h4>Supervisor post-validates property names</h4>
+          <p>Each extracted name is checked against <code>get_unique_values("property_name")</code>. Any unmatched names are sent to <code>llm_resolve_properties()</code> for a second resolution attempt. The validated list is saved to <code>state["filters"]["properties"]</code>.</p>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="step-num">4</div>
+        <div class="step-body">
+          <h4>Router sends state to Compare Node</h4>
+          <p>LangGraph's conditional edge reads <code>state["intent"]</code> and routes to the <code>compare</code> node.</p>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="step-num">5</div>
+        <div class="step-body">
+          <h4>Compare Node queries the DataFrame</h4>
+          <p><code>query_compare(["Building 180", "Building 140"], {"year": "2025"})</code> filters the in-memory Pandas DataFrame for each property and sums the <code>profit</code> column. Returns <code>{"Building 180": 95400.0, "Building 140": 82100.0}</code>.</p>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="step-num">6</div>
+        <div class="step-body">
+          <h4>Formatter Node narrates the data</h4>
+          <p>GPT-4o receives the question and the raw dict. It produces: <em>"Building 180 generated higher net income than Building 140 in 2025: $95,400 vs $82,100."</em> A regex cleanup pass removes any spacing artifacts.</p>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="step-num">7</div>
+        <div class="step-body">
+          <h4>Answer returned to UI</h4>
+          <p><code>state["answer"]</code> is displayed in the chat window. The diagnostics panel shows <code>intent: compare</code>, the filters, and the row count used. Streamlit renders a side-by-side metric widget for each property profit.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════  CSV SCHEMA  ═══════════ -->
+  <div class="section reveal">
+    <div class="section-title">Dataset Schema — properties.csv (~3,900 rows)</div>
+    <div style="border:1px solid var(--border);border-radius:12px;overflow:hidden">
+      <table class="schema-table">
+        <thead>
+          <tr>
+            <th>Column</th>
+            <th>Type</th>
+            <th>Role</th>
+            <th>Example</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>entity_name</td><td>str</td><td><span class="badge badge-key">identifier</span></td><td>PropCo</td></tr>
+          <tr><td>property_name</td><td>str</td><td><span class="badge badge-filter">filter</span></td><td>Building 180</td></tr>
+          <tr><td>tenant_name</td><td>str</td><td><span class="badge badge-filter">filter</span></td><td>Tenant A</td></tr>
+          <tr><td>ledger_type</td><td>str</td><td><span class="badge badge-filter">filter</span></td><td>expenses</td></tr>
+          <tr><td>ledger_group</td><td>str</td><td><span class="badge badge-filter">filter</span></td><td>general_expenses</td></tr>
+          <tr><td>ledger_category</td><td>str</td><td><span class="badge badge-key">detail</span></td><td>bank_charges</td></tr>
+          <tr><td>ledger_code</td><td>str</td><td><span class="badge badge-key">detail</span></td><td>4650</td></tr>
+          <tr><td>ledger_description</td><td>str</td><td><span class="badge badge-key">detail</span></td><td>Bank charges</td></tr>
+          <tr><td>month</td><td>str</td><td><span class="badge badge-time">time</span></td><td>2025-M01</td></tr>
+          <tr><td>quarter</td><td>str</td><td><span class="badge badge-time">time</span></td><td>2025-Q1</td></tr>
+          <tr><td>year</td><td>str</td><td><span class="badge badge-time">time</span></td><td>2025</td></tr>
+          <tr><td>profit</td><td>float</td><td><span class="badge badge-agg">aggregated</span></td><td>-24.0</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ═══════════  DESIGN DECISIONS  ═══════════ -->
+  <div class="section reveal">
+    <div class="section-title">Key Design Decisions</div>
+    <div class="decisions-grid">
+      <div class="decision-card">
+        <div class="dec-header"><span class="dec-icon">🔒</span><h4>JSON-mode everywhere</h4></div>
+        <p>All GPT-4o calls that need structured output use <code>response_format={"type": "json_object"}</code>, making parsing deterministic and eliminating markdown-wrapped JSON bugs.</p>
+      </div>
+      <div class="decision-card">
+        <div class="dec-header"><span class="dec-icon">📌</span><h4>Canonical values injected into prompts</h4></div>
+        <p>Property names, tenants, years, and quarters from the live CSV are injected into the supervisor's system prompt on every call. This keeps the LLM grounded and prevents hallucinated filter values.</p>
+      </div>
+      <div class="decision-card">
+        <div class="dec-header"><span class="dec-icon">🔄</span><h4>LLM-based property resolution</h4></div>
+        <p>Instead of pure fuzzy matching, <code>llm_resolve_properties()</code> uses GPT-4o to map any informal reference (address, nickname, partial name) to canonical names — more robust for real-world inputs.</p>
+      </div>
+      <div class="decision-card">
+        <div class="dec-header"><span class="dec-icon">💾</span><h4>Module-level DataFrame</h4></div>
+        <p>The CSV is loaded once at import time into a global <code>_df</code>. All queries operate on in-memory Pandas — zero database setup, near-instant filter operations for a ~4k row dataset.</p>
+      </div>
+      <div class="decision-card">
+        <div class="dec-header"><span class="dec-icon">✂️</span><h4>Formatter as a shared output layer</h4></div>
+        <p>Separating data retrieval (pl/property/compare nodes) from narration (formatter) keeps each node small and testable. The formatter has one job: turn raw numbers into prose.</p>
+      </div>
+      <div class="decision-card">
+        <div class="dec-header"><span class="dec-icon">🧪</span><h4>Eval harness from day one</h4></div>
+        <p><code>eval.py</code> provides intent accuracy, answer non-empty rate, and numeric match rate across defined test cases. This enables regression testing when the prompt or routing logic changes.</p>
+      </div>
+      <div class="decision-card">
+        <div class="dec-header"><span class="dec-icon">🚦</span><h4>Clarify intent used sparingly</h4></div>
+        <p>The supervisor prompt explicitly instructs GPT-4o to prefer a real intent over "clarify" — even when property names are unrecognized. Clarify is a last resort, not the default for partial matches.</p>
+      </div>
+      <div class="decision-card">
+        <div class="dec-header"><span class="dec-icon">⚡</span><h4>No async, no streaming, no retries</h4></div>
+        <p>The system is intentionally simple: synchronous calls, no complex retry logic. This makes the code easy to read, debug, and extend — appropriate for a portfolio/demo-scale project.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════  EVAL METRICS  ═══════════ -->
+  <div class="section reveal">
+    <div class="section-title">Evaluation Harness</div>
+    <p style="color:var(--muted);font-size:.88rem;margin-bottom:1rem">
+      <code style="background:var(--surface2);padding:.1rem .35rem;border-radius:4px;font-size:.8rem">eval.py</code> runs 4 test cases covering all intents. Metrics are printed as a structured report.
+    </p>
+    <div class="eval-grid">
+      <div class="eval-card">
+        <div class="metric" style="color:var(--accent)">4</div>
+        <div class="label">Total test cases</div>
+      </div>
+      <div class="eval-card">
+        <div class="metric" style="color:var(--green)">Intent</div>
+        <div class="label">Accuracy checked</div>
+      </div>
+      <div class="eval-card">
+        <div class="metric" style="color:var(--orange)">Numbers</div>
+        <div class="label">Numeric match rate</div>
+      </div>
+      <div class="eval-card">
+        <div class="metric" style="color:var(--purple)">Non-empty</div>
+        <div class="label">Answer coverage rate</div>
+      </div>
+    </div>
+    <div class="state-box" style="margin-top:1rem">
+<span class="cm"># example test cases in eval.py</span>
+EvalCase(question=<span class="str">"What is total P&L for Building 180 in 2025?"</span>,      expected_intent=<span class="str">"pl"</span>)
+EvalCase(question=<span class="str">"Compare Building 180 vs Building 140 in 2025."</span>,      expected_intent=<span class="str">"compare"</span>)
+EvalCase(question=<span class="str">"Show tenant-level details for Building 140 in 2025 Q1."</span>, expected_intent=<span class="str">"property"</span>)
+EvalCase(question=<span class="str">"What does cap rate mean in real estate?"</span>,            expected_intent=<span class="str">"general"</span>)
+    </div>
+  </div>
+
+  <!-- ═══════════  FILE TREE  ═══════════ -->
+  <div class="section reveal">
+    <div class="section-title">File Structure</div>
+    <div class="file-tree">
+<span class="ft-dir">realestate/</span>
+├── <span class="ft-new">eval.py</span>                       <span class="ft-note"># intent + numeric accuracy harness</span>
+├── <span class="ft-note">plan.md                        # original design spec</span>
+├── <span class="ft-note">README.md</span>
+└── <span class="ft-dir">real_estate_agent/</span>
+    ├── <span class="ft-file">app.py</span>                    <span class="ft-note"># Streamlit 3-column UI</span>
+    ├── <span class="ft-file">graph.py</span>                  <span class="ft-note"># LangGraph StateGraph definition</span>
+    ├── <span class="ft-file">state.py</span>                  <span class="ft-note"># AgentState TypedDict</span>
+    ├── <span class="ft-file">config.py</span>                 <span class="ft-note"># API key + CSV path</span>
+    ├── <span class="ft-file">requirements.txt</span>
+    ├── <span class="ft-dir">data/</span>
+    │   └── <span class="ft-file">properties.csv</span>        <span class="ft-note"># ~3,900 rows, 12 columns</span>
+    ├── <span class="ft-dir">nodes/</span>
+    │   ├── <span class="ft-file">supervisor.py</span>         <span class="ft-note"># entry: intent + filter extraction</span>
+    │   ├── <span class="ft-file">pl.py</span>                 <span class="ft-note"># P&L groupby query</span>
+    │   ├── <span class="ft-file">property.py</span>           <span class="ft-note"># raw row drill-down</span>
+    │   ├── <span class="ft-file">compare.py</span>            <span class="ft-note"># side-by-side profit comparison</span>
+    │   ├── <span class="ft-file">general.py</span>            <span class="ft-note"># domain Q&amp;A (no dataset)</span>
+    │   ├── <span class="ft-file">clarify.py</span>            <span class="ft-note"># ambiguity handler</span>
+    │   └── <span class="ft-file">formatter.py</span>          <span class="ft-note"># GPT-4o prose generator</span>
+    └── <span class="ft-dir">tools/</span>
+        ├── <span class="ft-file">data.py</span>               <span class="ft-note"># CSV loader + 3 query functions</span>
+        ├── <span class="ft-file">llm_resolve.py</span>        <span class="ft-note"># LLM-based canonical name resolution</span>
+        └── <span class="ft-file">fuzzy.py</span>              <span class="ft-note"># RapidFuzz helper (available, not active)</span>
+    </div>
+  </div>
+
+  <!-- footer -->
+  <div style="border-top:1px solid var(--border);padding-top:1.5rem;margin-top:1rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.5rem">
+    <span style="color:var(--muted);font-size:.8rem">Real Estate AI Agent — Architecture Overview</span>
+    <span style="color:var(--muted);font-size:.8rem">LangGraph · GPT-4o · Pandas · Streamlit</span>
+  </div>
+
+</div>
+
+<script>
+  // Scroll-reveal
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('visible'); } });
+  }, { threshold: 0.08 });
+  document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+</script>
+</body>
+</html>
